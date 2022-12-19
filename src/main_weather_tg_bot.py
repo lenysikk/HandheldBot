@@ -130,16 +130,16 @@ def get_wiki(s):
         return 'В Википедии нет информации об этом'
 
 def get_horoscope(url):
-    #try:
+    try:
         print(url)
         response = requests.get(url).text
         soup = BeautifulSoup(response, 'lxml')
         block = soup.find('div', {"class": "layout"})
         block = block.find('div', {"class": "article__text"}).text
         return block
-    #except:
-    #    print("GET запрос не выполнен")
-     #   return 'Прости,какая-то ошибка.\nТебя точно ждёт чудесный день!'
+    except:
+        print("GET запрос не выполнен")
+        return 'Прости,какая-то ошибка.\nТебя точно ждёт чудесный день!'
 
 @dp.message_handler(commands=["start"], state=None)
 async def start_command(message: types.Message) -> None:
