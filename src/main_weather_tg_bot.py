@@ -22,7 +22,17 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 db = Database("bot_database.db")
 wikipedia.set_lang('ru')
 alphabet = ' 1234567890-йцукенгшщзхъфывапролджэячсмитьбюёqwertyuiopasdfghjklzxcvbnm?%.,()!:;'
-url = 'https://horo.mail.ru/prediction/'
+
+class Url():
+    url = 'https://horo.mail.ru/prediction/'
+
+    def createUrl(self, string):
+        self.url += string;
+
+    def destroyUrl(self):
+        self.url = 'https://horo.mail.ru/prediction/'
+
+url = Url()
 translator = Translator()
 
 class Zodiac():
@@ -89,9 +99,9 @@ def standart_markup(id):
     button_note = types.KeyboardButton('Заметки \U0001F4DD')
     button_wiki = types.KeyboardButton('Найти в Википедии \U0001F50E')
     button_horoscope = types.KeyboardButton('Получить гороскоп \U0001F30C')
-    if id == 786869478:
-        button_emergency = types.KeyboardButton('Разослать напоминания \U000026A0')
-        markup.add(button_emergency)
+    #if id == 786869478:
+    #    button_emergency = types.KeyboardButton('Разослать напоминания \U000026A0')
+    #     markup.add(button_emergency)
     return markup.add(button_weather, button_reminder, button_note, button_wiki, button_horoscope)
 
 def clean_str(r):
@@ -120,15 +130,16 @@ def get_wiki(s):
         return 'В Википедии нет информации об этом'
 
 def get_horoscope(url):
-    try:
+    #try:
+        print(url)
         response = requests.get(url).text
         soup = BeautifulSoup(response, 'lxml')
         block = soup.find('div', {"class": "layout"})
         block = block.find('div', {"class": "article__text"}).text
         return block
-    except:
-        print("GET запрос не выполнен")
-        return 'Прости,какая-то ошибка.\nТебя точно ждёт чудесный день!'
+    #except:
+    #    print("GET запрос не выполнен")
+     #   return 'Прости,какая-то ошибка.\nТебя точно ждёт чудесный день!'
 
 @dp.message_handler(commands=["start"], state=None)
 async def start_command(message: types.Message) -> None:
@@ -143,7 +154,6 @@ async def start_command(message: types.Message) -> None:
 
 @dp.message_handler(state=Form.base_state)
 async def bot_message(message: types.Message, state: FSMContext) -> None:
-    global translator
     if message.text == 'Погода \U0001F324':
         await message.reply("Введи название города:")
         await Form.weather_state.set()
@@ -179,6 +189,9 @@ async def bot_message(message: types.Message, state: FSMContext) -> None:
         markup.add(button_create, button_get)
         await message.reply("Выбери действие", reply_markup=markup)
         await Form.note_state.set()
+    else:
+        await bot.send_message(message.chat.id, "Привет!)", reply_markup=standart_markup(message.from_user.id))
+        await Form.base_state.set()
 
 async def remind_all_emergency() -> None:
     users = await db.get_users()
@@ -189,7 +202,6 @@ async def remind_all_emergency() -> None:
 
 @dp.message_handler()
 async def bot_message(message: types.Message, state: FSMContext) -> None:
-    global translator
     if message.text == 'Погода \U0001F324':
         await message.reply("Введи название города:")
         await Form.weather_state.set()
@@ -224,6 +236,9 @@ async def bot_message(message: types.Message, state: FSMContext) -> None:
         markup.add(button_create, button_get)
         await message.reply("Выбери действие", reply_markup=markup)
         await Form.note_state.set()
+    else:
+        await bot.send_message(message.chat.id, "Привет!)", reply_markup=standart_markup(message.from_user.id))
+        await Form.base_state.set()
 
 @dp.message_handler(state=Form.wiki_state)
 async def note_operation(message: types.Message, state= FSMContext) -> None:
@@ -234,15 +249,14 @@ async def note_operation(message: types.Message, state= FSMContext) -> None:
 
 @dp.message_handler(state=Form.horoscope_state)
 async def note_operation(message: types.Message, state= FSMContext) -> None:
-    global url
     text = message.text
     if text == 'Да \U00002705':
         try:
             result = await db.get_zodiac_by_id(message.from_user.id)
         except:
             print("Ошибка работы базы данных")
-        url += result
-        url += '/'
+        url.createUrl(result)
+        url.createUrl('/')
         await Form.horoscope_result_state.set()
     elif text == 'Нет \U0000274C':
         await db.delete_zodiac(message.from_user.id)
@@ -252,8 +266,8 @@ async def note_operation(message: types.Message, state= FSMContext) -> None:
         return
     elif text in Zodiac.code_to_zodiac:
         result = Zodiac.code_to_zodiac[text]
-        url += result
-        url +='/'
+        url.createUrl(result)
+        url.createUrl('/')
         await db.set_zodiac(message.from_user.id, result)
 
     markup = horoscope_markup()
@@ -262,18 +276,17 @@ async def note_operation(message: types.Message, state= FSMContext) -> None:
 
 @dp.message_handler(state=Form.horoscope_result_state)
 async def note_operation(message: types.Message, state= FSMContext) -> None:
-    global url
     text = message.text
     if text == 'Сегодня \U0001F51B':
-        url += 'today/'
+        url.createUrl('today/')
     elif text == 'Завтра \U0001F51C':
-        url += 'tomorrow/'
+        url.createUrl('tomorrow/')
     elif text == 'Неделя \U0001F4C5':
-        url += 'week/'
+        url.createUrl('week/')
 
-    await bot.send_message(message.chat.id, "Ваш гороскоп:\n" + get_horoscope(url))
+    await bot.send_message(message.chat.id, "Ваш гороскоп:\n" + get_horoscope(url.url))
 
-    url = 'https://horo.mail.ru/prediction/'
+    url.destroyUrl()
     markup = standart_markup(message.from_user.id)
     await bot.send_message(message.chat.id, "Выберите дальнейшее действие", reply_markup=markup)
     await Form.base_state.set()
